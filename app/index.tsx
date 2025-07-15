@@ -1,5 +1,5 @@
 import { 
-  Text, View, StyleSheet, TextInput, Button, FlatList, Pressable,
+  Text, View, StyleSheet, TextInput, Button, FlatList, 
   Alert
 } from "react-native";
 import { useState, useEffect } from 'react'
@@ -11,11 +11,51 @@ type Movie = {
   rating: number,
   genre: string,
   imageUrl: string,
-  duration: string
+  duration: string,
+}
+
+interface Error{
+
 }
 
 export default function Index() {
   const [movies, setMovies] = useState<Movie[]>([]);
+  const [name, setName] = useState('');
+  const [language, setLanguage] = useState('');
+  const [rating, setRating] = useState('');
+  const [genre, setGenre] = useState('');
+  const [imageUrl, setImageUrl] = useState('')
+  const [duration, setDuration] = useState('')
+  const [token, setToken] = useState<string | null>(null);
+
+  const login = async () => {
+    const credentials = [
+      { email: 'mark@email.com', passwordKey: 'password', password: 'User2#4509' },
+    ]
+    for (const cred of credentials) {
+      try{
+        const body = {
+          email: cred.email, 
+          [cred.passwordKey]: cred.password
+        }
+        const response = await fetch ('http://exceit20122-001-site1.qtempurl.com/api/users/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json'},
+          body: JSON.stringify(body)
+        })
+        const responseText = await response.text();
+        console.log('Response: ', responseText)
+        if (!response.ok){
+          throw new Error(`Login failed with: ${response.status}: ${responseText}`)
+        }
+        const data = JSON.parse(responseText);
+        setToken(data.access_token);
+        Alert.alert('Success', 'Logged in successful')
+      }catch(error){
+        console.log(`Login attempt with ${cred.email}, ${cred.passwordKey} failed: ${error.message}`);
+      }
+    }
+  }
 
   const fetchMovies = async () => {
     try{
@@ -27,24 +67,50 @@ export default function Index() {
     }
   };
 
-  const createMovie = async () =>{
-    if(!name || !duration || !language || !rating || !genre || !imageUrl){
-      Alert.alert('error', 'Please fill in both Title and body')
+  const createMovie = async () => {
+    if(!token){
+      Alert.alert('Error','Please login first')
+    }
+    if (!name || !language || !rating || !genre || !imageUrl || !duration){
+      Alert.alert('error', 'Please fill in all fields');
       return;
     }
     try {
-      const response = await fetch ('http://exceit20122-001-site1.qtempurl.com/api/movies/AllMovies', {
+      const formData = new URLSearchParams();
+      formData.append('name', name);
+      formData.append('language',language);
+      formData.append('rating', rating);
+      formData.append('genre',genre);
+      formData.append('imageURL',imageUrl);
+      formData.append('duration',duration);
+
+      const response = await fetch ('http://exceit20122-001-site1.qtempurl.com/api/movies/', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({name, body})
-      });
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: `Bearer ${token}`
+        },
+        body: formData.toString()
+      })
+      if(!response.ok) {
+        throw new Error ('Failer to create movie')
+      }
       const newMovie = await response.json();
       setMovies([newMovie, ...movies]);
-      
-      Alert.alert('success', 'movie created')
-    }catch (error){
-      Alert.alert('error', 'Failed to create movie')
+      clearInput();
+      Alert.alert('Success', 'Movie Created')
+    }catch(error){
+      Alert.alert('Error', `Failed to create movie: ${error.messsage}`);
     }
+  }
+
+  const clearInput = () =>{
+    setName('');
+    setLanguage('');
+    setRating('');
+    setGenre('');
+    setImageUrl('');
+    setDuration('');
   }
 
   useEffect(()=> {
@@ -54,26 +120,34 @@ export default function Index() {
   return (
     <View style={styles.container}>
       <Text style={styles.header}> Simple Crud Api</Text>
-      <View >
+      <Button title="Login" onPress={login} />
+      <View style={styles.inputForm}>
+        <TextInput style={styles.input} placeholder="Movie name" value={name} onChangeText={setName}/>
+        <TextInput style={styles.input} placeholder="Language" value={language} onChangeText={setLanguage}/>
+        <TextInput style={styles.input} placeholder="Rating" value={rating} onChangeText={setRating}/>
+        <TextInput style={styles.input} placeholder="Genre" value={genre} onChangeText={setGenre}/>
+        <TextInput style={styles.input} placeholder="imageUrl" value={imageUrl} onChangeText={setImageUrl}/>
+        <TextInput style={styles.input} placeholder="Duration" value={duration} onChangeText={setDuration}/>
 
+        <Button title="Create Movie" onPress={createMovie}/>
       </View>
 
       <FlatList
         data={movies}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({item}) => (
-          <View style={styles.post}>
-            <Text style={styles.postTitle}>{item.name || 'Untitled Movie'}</Text>
-            <Text style={styles.postDetail}>
+          <View style={styles.movie}>
+            <Text style={styles.movieTitle}>{item.name || 'Untitled Movie'}</Text>
+            <Text style={styles.movieDetail}>
               Language: {item.language || 'Null'}
             </Text>
-            <Text style={styles.postDetail}>
+            <Text style={styles.movieDetail}>
               Rating: {item.rating !== null ? item.rating : 'Not rated'}
             </Text>
-            <Text style={styles.postDetail}>
+            <Text style={styles.movieDetail}>
               Genre: {item.genre || 'Null'}
             </Text>
-            <Text style={styles.postDetail}>
+            <Text style={styles.movieDetail}>
               Duration: {item.duration || 'Null'}
             </Text>
           </View>
@@ -101,7 +175,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
   },
-  post: {
+  movie: {
     padding: 15,
     marginBottom: 10,
     backgroundColor: '#fff',
@@ -109,12 +183,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
   },
-  postTitle: {
+  movieTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 5,
   },
-  postDetail: {
+  movieDetail: {
     fontSize: 14,
     color: '#666',
     marginTop: 2,
@@ -137,6 +211,13 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   inputForm: {
-    
+    marginVertical:10
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 10,
+    marginBottom: 10,
+    borderRadius: 5,
   }
 });
