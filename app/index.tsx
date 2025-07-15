@@ -14,10 +14,6 @@ type Movie = {
   duration: string,
 }
 
-interface Error{
-
-}
-
 export default function Index() {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [name, setName] = useState('');
@@ -27,22 +23,28 @@ export default function Index() {
   const [imageUrl, setImageUrl] = useState('')
   const [duration, setDuration] = useState('')
   const [token, setToken] = useState<string | null>(null);
+  const [showLoginForm, setShowLoginForm] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
 
   const login = async () => {
-    const credentials = [
-      { email: 'mark@email.com', passwordKey: 'password', password: 'User2#4509' },
-    ]
-    for (const cred of credentials) {
+    if (!loginEmail || !loginPassword){
+      Alert.alert('Please enter both Email & password');
+      return;
+    }
+    const passwordKeys = ['password', 'Password'];
+    for (const passwordKey of passwordKeys) {
       try{
         const body = {
-          email: cred.email, 
-          [cred.passwordKey]: cred.password
-        }
+          email: loginEmail,
+          [passwordKey]: loginPassword
+        };
         const response = await fetch ('http://exceit20122-001-site1.qtempurl.com/api/users/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json'},
           body: JSON.stringify(body)
         })
+        console.log(`Login attempt with ${loginEmail}, ${passwordKey}: Status ${response.status}`);
         const responseText = await response.text();
         console.log('Response: ', responseText)
         if (!response.ok){
@@ -50,11 +52,16 @@ export default function Index() {
         }
         const data = JSON.parse(responseText);
         setToken(data.access_token);
-        Alert.alert('Success', 'Logged in successful')
-      }catch(error){
-        console.log(`Login attempt with ${cred.email}, ${cred.passwordKey} failed: ${error.message}`);
+        setShowLoginForm(false);
+        setLoginEmail('');
+        setLoginPassword('');
+        Alert.alert('Success', 'Logged in successful');
+        return;
+      }catch(error: Error){
+        console.log(`Login failed: ${error.message}`);
       }
     }
+    Alert.alert('Error', 'Failed to login with provided credentials');
   }
 
   const fetchMovies = async () => {
@@ -120,7 +127,35 @@ export default function Index() {
   return (
     <View style={styles.container}>
       <Text style={styles.header}> Simple Crud Api</Text>
-      <Button title="Login" onPress={login} />
+      {token ? (
+        <Text style={styles.loggedInText}>Logged in successfully</Text>
+      ) : (
+        <Button title="Login" onPress={() => setShowLoginForm(true)} />
+      )}
+      {showLoginForm && !token && (
+        <View style={styles.loginForm}>
+          <Text style={styles.formHeader}>Login</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            value={loginEmail}
+            onChangeText={setLoginEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            value={loginPassword}
+            onChangeText={setLoginPassword}
+            secureTextEntry
+          />
+          <View style={styles.buttonContainer}>
+            <Button title="Submit" onPress={login} />
+            <Button title="Cancel" onPress={() => setShowLoginForm(false)} />
+          </View>
+        </View>
+      )}
       <View style={styles.inputForm}>
         <TextInput style={styles.input} placeholder="Movie name" value={name} onChangeText={setName}/>
         <TextInput style={styles.input} placeholder="Language" value={language} onChangeText={setLanguage}/>
@@ -219,5 +254,33 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 10,
     borderRadius: 5,
-  }
+  },
+  loginForm: {
+    marginBottom: 20,
+    padding: 10,
+    backgroundColor: '#fff',
+    borderRadius: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  formHeader: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  loggedInText: {
+    fontSize: 16,
+    color: 'green',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
 });
