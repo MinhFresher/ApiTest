@@ -99,15 +99,17 @@ export default function Index() {
         },
         body: formData.toString()
       })
+      console.log(`create movie: Status ${response.status}`);
+      const responseText = await response.text();
+      console.log('response:', responseText);
       if(!response.ok) {
-        throw new Error ('Failer to create movie')
+        throw new Error (`Failed to create movie ${response.status}: ${responseText}`)
       }
-      const newMovie = await response.json();
-      setMovies([newMovie, ...movies]);
+      await fetchMovies();
       clearInput();
       Alert.alert('Success', 'Movie Created')
-    }catch(error){
-      Alert.alert('Error', `Failed to create movie: ${error.messsage}`);
+    }catch(error: Error){
+      Alert.alert('Error', `Failed to create movie: ${error.message}`);
     }
   }
 
@@ -190,7 +192,7 @@ export default function Index() {
       />
     </View>
   );
-}
+} 
 
 const styles = StyleSheet.create({
   container: {
