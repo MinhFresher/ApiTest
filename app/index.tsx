@@ -1,6 +1,6 @@
 import { 
   Text, View, StyleSheet, TextInput, Button, FlatList, 
-  Alert
+  Alert, Modal
 } from "react-native";
 import { useState, useEffect } from 'react'
 
@@ -200,6 +200,34 @@ export default function Index() {
     }
   }
 
+  const getMovieDetails = async (id: number) => {
+    if (!token) {
+      Alert.alert('Error', 'Please login first');
+      return;
+    }
+    try {
+      const response = await fetch(`http://exceit20122-001-site1.qtempurl.com/api/movies/MovieDetail/${id}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log(`Get movie details: Status ${response.status}`);
+      const responseText = await response.text();
+      console.log('Response:', responseText);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch movie details ${response.status}: ${responseText}`);
+      }
+
+      const data = JSON.parse(responseText);
+      setSelectedMovie(data);
+    } catch (error: any) {
+      Alert.alert('Error', `Failed to fetch movie details: ${error.message}`);
+    }
+  };
+
   const clearInput = () =>{
     setName('');
     setLanguage('');
@@ -281,23 +309,51 @@ export default function Index() {
               Duration: {item.duration || 'Null'}
             </Text>
             <View style={styles.buttonContainer}>
-              <Button
-                title="Edit"
-                onPress={() => {
-                  setEditingMovie(item.id);
-                  setName(item.name || '');
-                  setLanguage(item.language || '');
-                  setRating(item.rating?.toString() || '')
-                  setGenre(item.genre || '')
-                  setImageUrl(item.imageUrl || '');
-                  setDuration(item.duration || '');
-                }}  
-              />
+              <View style={styles.buttonContainer}>
+                <Button
+                  title="Edit"
+                  onPress={() => {
+                    setEditingMovie(item.id);
+                    setName(item.name || '');
+                    setLanguage(item.language || '');
+                    setRating(item.rating?.toString() || '')
+                    setGenre(item.genre || '')
+                    setImageUrl(item.imageUrl || '');
+                    setDuration(item.duration || '');
+                  }}  
+                />
+                <Button title="Detail" onPress={() => getMovieDetails(item.id)}/>
+              </View>
               <Button title="Delete" onPress={() => deleteMovie(item.id)}/>
             </View>
           </View>
         )}
       />
+      {selectedMovie && (
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={!!selectedMovie}
+          onRequestClose={() => setSelectedMovie(null)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalHeader}>Movie Details</Text>
+              <Text style={styles.movieDetail}>Name: {selectedMovie.name || 'Untitled'}</Text>
+              <Text style={styles.movieDetail}>Language: {selectedMovie.language || 'Null'}</Text>
+              <Text style={styles.movieDetail}>Rating: {selectedMovie.rating !== null ? selectedMovie.rating : 'Not rated'}</Text>
+              <Text style={styles.movieDetail}>Genre: {selectedMovie.genre || 'Null'}</Text>
+              <Text style={styles.movieDetail}>Duration: {selectedMovie.duration || 'Null'}</Text>
+              <Text style={styles.movieDetail}>Description: {selectedMovie.description || 'Null'}</Text>
+              <Text style={styles.movieDetail}>Playing Date: {selectedMovie.playingDate || 'Null'}</Text>
+              <Text style={styles.movieDetail}>Playing Time: {selectedMovie.playingTime || 'Null'}</Text>
+              <Text style={styles.movieDetail}>Ticket Price: {selectedMovie.ticketPrice !== null ? selectedMovie.ticketPrice : 'Null'}</Text>
+              <Text style={styles.movieDetail}>Trailer URL: {selectedMovie.trailorUrl || 'Null'}</Text>
+              <Button title="Close" onPress={() => setSelectedMovie(null)} />
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 } 
@@ -391,6 +447,24 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 10,
+    
+    gap: 10
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    width: '80%',
+  },
+  modalHeader: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
   },
 });
