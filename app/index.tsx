@@ -5,13 +5,20 @@ import {
 import { useState, useEffect } from 'react'
 
 type Movie = {
-  id: string,
-  name: string,
-  language: string,
-  rating: number,
-  genre: string,
-  imageUrl: string,
-  duration: string,
+  id: number;
+  name: string;
+  language: string | null;
+  rating: number | null;
+  genre: string | null;
+  imageUrl: string | null;
+  duration: string | null;
+  description?: string | null;
+  playingDate?: string | null;
+  playingTime?: string | null;
+  ticketPrice?: number | null;
+  trailorUrl?: string | null;
+  image?: string | null;
+  reservations?: any | null;
 }
 
 export default function Index() {
@@ -26,7 +33,9 @@ export default function Index() {
   const [showLoginForm, setShowLoginForm] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-
+  const [editingMovie, setEditingMovie] = useState<number | null>(null);
+  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
+  
   const login = async () => {
     if (!loginEmail || !loginPassword){
       Alert.alert('Please enter both Email & password');
@@ -82,26 +91,36 @@ export default function Index() {
       Alert.alert('error', 'Please fill in all fields');
       return;
     }
+    
     try {
-      const formData = new URLSearchParams();
-      formData.append('name', name);
-      formData.append('language',language);
-      formData.append('rating', rating);
-      formData.append('genre',genre);
-      formData.append('imageURL',imageUrl);
-      formData.append('duration',duration);
+      const body = {
+        name,
+        language,
+        rating,
+        genre,
+        imageURL: imageUrl,
+        duration
+      };
 
-      const response = await fetch ('http://exceit20122-001-site1.qtempurl.com/api/movies/', {
+      const response = await fetch('http://exceit20122-001-site1.qtempurl.com/api/movies/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           Authorization: `Bearer ${token}`
         },
-        body: formData.toString()
-      })
+        body: JSON.stringify(body)
+      });
       console.log(`create movie: Status ${response.status}`);
       const responseText = await response.text();
       console.log('response:', responseText);
+      console.log('Sending movie:', {
+        name,
+        language,
+        rating,
+        genre,
+        imageURL: imageUrl,
+        duration
+      });
       if(!response.ok) {
         throw new Error (`Failed to create movie ${response.status}: ${responseText}`)
       }
@@ -112,6 +131,49 @@ export default function Index() {
       Alert.alert('Error', `Failed to create movie: ${error.message}`);
     }
   }
+
+  const updateMovie = async (id: number) => {
+    if (!token) {
+      Alert.alert('Error', 'Please login first');
+      return;
+    }
+    if (!name || !language || !rating || !genre || !imageUrl || !duration) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+    try {
+      const formData = new URLSearchParams();
+      formData.append('name', name);
+      formData.append('language', language);
+      formData.append('rating', rating); 
+      formData.append('genre', genre);
+      formData.append('imageUrl', imageUrl);
+      formData.append('duration', duration);
+
+      const response = await fetch(`http://exceit20122-001-site1.qtempurl.com/api/movies/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData.toString(),
+      });
+
+      console.log(`Update movie status: ${response.status}`);
+      const responseText = await response.text();
+      console.log(`Response: ${response.status}: ${responseText}`);
+      if (!response.ok) {
+        throw new Error(`Failed to update movie ${response.status}: ${responseText}`);
+      }
+      await fetchMovies();
+      clearInput();
+      setEditingMovie(null);
+      Alert.alert('Success', 'Movie updated!');
+    } catch (error: any) {
+      Alert.alert('Error', `Failed to update movie: ${error.message}`);
+    }
+  };
+
 
   const clearInput = () =>{
     setName('');
@@ -166,7 +228,13 @@ export default function Index() {
         <TextInput style={styles.input} placeholder="imageUrl" value={imageUrl} onChangeText={setImageUrl}/>
         <TextInput style={styles.input} placeholder="Duration" value={duration} onChangeText={setDuration}/>
 
-        <Button title="Create Movie" onPress={createMovie}/>
+        <Button 
+          title={editingMovie ? 'Update movie' : 'Create movie'}
+          onPress={() => (editingMovie ? updateMovie(editingMovie) : createMovie)}
+        />
+        {editingMovie && (
+          <Button title="Cancel" onPress={() => {clearInput(); setEditingMovie(null); }}/>
+        )}
       </View>
 
       <FlatList
@@ -187,6 +255,21 @@ export default function Index() {
             <Text style={styles.movieDetail}>
               Duration: {item.duration || 'Null'}
             </Text>
+            <View style={styles.buttonContainer}>
+              <Button
+                title="Edit"
+                onPress={() => {
+                  setEditingMovie(item.id);
+                  setName(item.name || '');
+                  setLanguage(item.language || '');
+                  setRating(item.rating?.toString() || '')
+                  setGenre(item.genre || '')
+                  setImageUrl(item.imageUrl || '');
+                  setDuration(item.duration || '');
+                }}  
+              />
+              <Button title="Delete"/>
+            </View>
           </View>
         )}
       />
