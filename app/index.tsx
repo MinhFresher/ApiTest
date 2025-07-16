@@ -66,7 +66,7 @@ export default function Index() {
         setLoginPassword('');
         Alert.alert('Success', 'Logged in successful');
         return;
-      }catch(error: Error){
+      }catch(error: any){
         console.log(`Login failed: ${error.message}`);
       }
     }
@@ -78,41 +78,41 @@ export default function Index() {
       const response = await fetch ('http://exceit20122-001-site1.qtempurl.com/api/movies/AllMovies')
       const data = await response.json();
       setMovies(data)
+      
     } catch(error){
       Alert.alert('Error', 'Failed to fetch movies')
     }
   };
 
   const createMovie = async () => {
-    if(!token){
-      Alert.alert('Error','Please login first')
-    }
-    if (!name || !language || !rating || !genre || !imageUrl || !duration){
-      Alert.alert('error', 'Please fill in all fields');
+    if (!token) {
+      Alert.alert('Error', 'Please login first');
       return;
     }
-    
+    if (!name || !language || !rating || !genre || !imageUrl || !duration) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
     try {
-      const body = {
-        name,
-        language,
-        rating,
-        genre,
-        imageURL: imageUrl,
-        duration
-      };
+      const formData = new URLSearchParams();
+      formData.append('name', name);
+      formData.append('language', language);
+      formData.append('rating', rating);
+      formData.append('genre', genre);
+      formData.append('imageUrl', imageUrl);
+      formData.append('duration', duration);
 
       const response = await fetch('http://exceit20122-001-site1.qtempurl.com/api/movies/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(body)
+        body: formData.toString(),
       });
-      console.log(`create movie: Status ${response.status}`);
+      console.log(`Create movie: Status ${response.status}`);
       const responseText = await response.text();
-      console.log('response:', responseText);
+      console.log('Response:', responseText);
       console.log('Sending movie:', {
         name,
         language,
@@ -121,16 +121,16 @@ export default function Index() {
         imageURL: imageUrl,
         duration
       });
-      if(!response.ok) {
-        throw new Error (`Failed to create movie ${response.status}: ${responseText}`)
+      if (!response.ok) {
+        throw new Error(`Failed to create movie ${response.status}: ${responseText}`);
       }
       await fetchMovies();
       clearInput();
-      Alert.alert('Success', 'Movie Created')
-    }catch(error: Error){
+      Alert.alert('Success', 'Movie created');
+    } catch (error: any) {
       Alert.alert('Error', `Failed to create movie: ${error.message}`);
     }
-  }
+  };
 
   const updateMovie = async (id: number) => {
     if (!token) {
@@ -174,6 +174,31 @@ export default function Index() {
     }
   };
 
+  const deleteMovie = async (id: number) => {
+    if (!token){
+      Alert.alert('Error', 'Please login first!')
+      return;
+    }
+
+    try{
+      const response = await fetch (`http://exceit20122-001-site1.qtempurl.com/api/movies/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+      });
+      console.log(`Delete movie status: ${response.status}`);
+      const responseText = await response.text();
+      console.log('Response: ', responseText);
+      if (!response.ok){
+        throw new Error(`Failed to delte movie ${response.status}: ${responseText}`);
+      }
+      await fetchMovies();
+      Alert.alert('Success', 'Movie Deleted')
+    }catch (error: any) {
+      Alert.alert('Error', `Failed to delete movie ${error.message}`)
+    }
+  }
 
   const clearInput = () =>{
     setName('');
@@ -228,9 +253,9 @@ export default function Index() {
         <TextInput style={styles.input} placeholder="imageUrl" value={imageUrl} onChangeText={setImageUrl}/>
         <TextInput style={styles.input} placeholder="Duration" value={duration} onChangeText={setDuration}/>
 
-        <Button 
-          title={editingMovie ? 'Update movie' : 'Create movie'}
-          onPress={() => (editingMovie ? updateMovie(editingMovie) : createMovie)}
+        <Button
+          title={editingMovie ? 'Update Movie' : 'Create Movie'}
+          onPress={() => (editingMovie ? updateMovie(editingMovie) : createMovie())}
         />
         {editingMovie && (
           <Button title="Cancel" onPress={() => {clearInput(); setEditingMovie(null); }}/>
@@ -268,7 +293,7 @@ export default function Index() {
                   setDuration(item.duration || '');
                 }}  
               />
-              <Button title="Delete"/>
+              <Button title="Delete" onPress={() => deleteMovie(item.id)}/>
             </View>
           </View>
         )}
